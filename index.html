@@ -1,0 +1,183 @@
+<html>
+<head>
+	<title>Panasonic TV Remote HTML Tester</title>
+</head>
+<body>
+<div class="tv-remote">
+	<div class="settings collapsed">
+		<div class="github">
+			Panasonic Viera Remote control,
+			<a href="https://github.com/m4recek/panasonic-viera-remote-control">GitHub</a>
+		</div>
+		<i class="icon fa fa-cogs"></i>
+		<div class="container">
+			<input type="text" placeholder="Enter IP">
+			<input type="submit" value="OK">
+		</div>
+	</div>
+	<span class="message">...</span>
+	<div class="commands"></div>
+</div>
+
+<script src="http://code.jquery.com/jquery-1.12.0.min.js"></script>
+<script src="./VieraTVRemote.js"></script>
+<script>
+	$(document).ready(function() {
+		/**
+		 *  initialize tvRemote
+		 */
+		var tvRemote = new VieraTVRemote();
+		tvRemote.execute = function(requestUrl, requestMethod, requestHeaders, requestData) {
+			return $.ajax(
+						requestUrl,
+						{
+							method: requestMethod,
+							headers: requestHeaders,
+							data: requestData,
+							error: function(xhr, status, error) {
+								console.error('TVRemote->execute()', status, error, xhr);
+								Error.showError('Error, see console log for details');
+							},
+							success: function(data, status) {
+								console.info(status, data);
+								Error.hideError('Done');
+							}
+						}
+					);
+		};
+
+		// create commands buttons
+		var elements = [];
+		VieraTVRemote.COMMANDS.map(function(value) {
+			//skip separate ON/OFF commands, we dont need them for functional testing
+			if (value.indexOf('ONOFF') === -1) {
+				return
+			} else {
+				var element = $('<span />').text(value).attr('data-command', value);
+				element.on('click', function() {
+					var command = $(this).attr('data-command');
+
+					if (tvRemote.sendCommand(command)) {
+						Error.hideError();
+					} else {
+						Error.showError('Error, check console for details');
+					}
+				});
+				element.mousedown(function(e){ e.preventDefault(); });
+				elements.push(element)
+			}
+		}, this);
+		$('.tv-remote .commands').append(elements);
+
+		/**
+		 * settings
+ 		 */
+		var settings = $('.settings');
+
+		//autoload last ip from localStorage
+		var ipInput = settings.find('input[type="text"]');
+		var ipValue = window.localStorage.getItem('tv-ip');
+		if (ipValue) {
+			ipInput.attr('placeholder', ipValue);
+			tvRemote.setIp(ipValue);
+		}
+
+		settings.find('input[type="submit"]').on('click', function() {
+			var ipValue = ipInput.val();
+
+			Error.hideError();
+			if (tvRemote.setIp(ipValue)) {
+				ipInput.attr('placeholder', ipValue).val('');
+				window.localStorage.setItem('tv-ip', ipValue);
+				Error.hideError('IP set');
+			} else {
+				Error.showError('Please enter an ip of your TV');
+			}
+		});
+
+		var Error = {};
+		Error.showError = function(message) {
+			message += `<br>When testing you need to run chrome with <b>chrome --disable-web-security</b> command
+						<a href='http://stackoverflow.com/questions/3102819/disable-same-origin-policy-in-chrome'
+							target='_blank'>see this link</a>`;
+			$('.message').addClass('error').html(message);
+		};
+		Error.hideError = function(message) {
+			$('.message').removeClass('error').html(message || '...');
+		};
+	});
+</script>
+
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css">
+<style>
+	* {
+		box-sizing: border-box;
+	}
+
+	.tv-remote .github {
+		padding: 5px;
+		font-weight: bold;
+	}
+
+	.tv-remote .github a,
+	.tv-remote .github a:visited {
+		color: #444D7D;
+	}
+
+	.tv-remote .commands {
+		--webkit-user-select: none;
+		user-select: none;
+	}
+
+	.tv-remote .commands * {
+		--webkit-user-select: none;
+		user-select: none;
+		display: inline-block;
+		border: 1px solid gray;
+		padding: 2px 8px;
+		margin: 2px 8px;
+		cursor: pointer;
+	}
+
+	.tv-remote .settings {
+		width: 100%;
+		line-height: 20px;
+		padding: 4px 8px;
+		background-color: silver;
+	}
+
+	.tv-remote .settings input[type="text"] {
+		color: #E24B4B;
+	}
+
+	.tv-remote .settings input[type="text"],
+	.tv-remote .settings input[type="submit"] {
+		border: 1px solid gray;
+		padding: 5px;
+		height: 30px;
+	}
+
+	.tv-remote .message {
+		background-color: silver;
+		width: 100%;
+		display: inline-block;
+		padding: 4px 16px;
+		margin-bottom: 10px;
+	}
+
+	.tv-remote .message.error {
+		background-color: #FFC253;
+	}
+
+	.tv-remote .settings input[type=submit] {
+		font-weight: bold;
+		cursor: pointer;
+	}
+
+	.tv-remote .settings .icon {
+		float: left;
+		margin: 5px 12px 5px 8px;
+	}
+</style>
+</body>
+</html>
